@@ -20,6 +20,11 @@ db.exec(`
         session_type TEXT PRIMARY KEY,
         last_num INTEGER DEFAULT 0
     );
+    CREATE TABLE IF NOT EXISTS session_participants (
+        channel_id TEXT,
+        user_id TEXT,
+        PRIMARY KEY (channel_id, user_id)
+    );
 `);
 
 module.exports = {
@@ -57,6 +62,7 @@ module.exports = {
 
     deleteSession: (channelId) => {
         db.prepare('DELETE FROM active_sessions WHERE channel_id = ?').run(channelId);
+        db.prepare('DELETE FROM session_participants WHERE channel_id = ?').run(channelId);
     },
 
     // Gets top 10 for a specific type (used for slash commands later)
@@ -85,5 +91,16 @@ module.exports = {
             ORDER BY count DESC 
             LIMIT ? OFFSET ?
         `).all(sessionType, limit, offset);
+    },
+
+    // Checks if a user has already been recorded for this specific channel
+    hasJoined: (channelId, userId) => {
+        const row = db.prepare('SELECT 1 FROM session_participants WHERE channel_id = ? AND user_id = ?').get(channelId, userId);
+        return !!row;
+    },
+
+    // Records that a user joined this specific channel
+    recordParticipant: (channelId, userId) => {
+        db.prepare('INSERT OR IGNORE INTO session_participants (channel_id, user_id) VALUES (?, ?)').run(channelId, userId);
     }
 };

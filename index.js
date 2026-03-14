@@ -151,11 +151,27 @@ client.on('interactionCreate', async (interaction) => {
                 });
             }
 
+            // Check if they currently have permissions (prevents spamming join while inside)
+            const currentOverwrites = targetChannel.permissionOverwrites.cache.get(user.id);
+            const hasPerms = currentOverwrites && currentOverwrites.allow.has(PermissionsBitField.Flags.ViewChannel);
+
+            if (hasPerms) {
+                return interaction.reply({ content: '⚠️ You are already in this session!', flags: [MessageFlags.Ephemeral] });
+            }
+
             await targetChannel.permissionOverwrites.create(user.id, { ViewChannel: true });
             db.addUserScore(user.id, session.session_type);
             
-            // REMINDER: Notification in the session channel
-            await targetChannel.send(`📥 **Join:** <@${user.id}> has entered the session.`);
+            // 3. Check the participant table (prevents double-scoring if they left and came back)
+            const alreadyScored = db.hasJoined(targetChannel.id, user.id);
+
+        if (!alreadyScored) {
+            db.addUserScore(user.id, session.session_type); // Add to leaderboard
+            db.recordParticipant(targetChannel.id, user.id); // Mark as "already scored for this session"
+            await targetChannel.send(`📥 **Join:** <@${user.id}> joined for the first time (+1 point).`);
+        } else {
+            await targetChannel.send(`📥 **Re-join:** <@${user.id}> returned to the session (no extra points).`);
+        }
             
             await interaction.reply({ content: `✅ Added to <#${targetChannel.id}>!`, flags: [MessageFlags.Ephemeral] });
         }
