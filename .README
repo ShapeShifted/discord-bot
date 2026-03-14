@@ -1,0 +1,1 @@
+pm2 start index.js --name discord-bot --watch --ignore-watch="*.db sessions.db-journal node_modules" --interpreter=$(which node)
