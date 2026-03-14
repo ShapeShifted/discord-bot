@@ -160,7 +160,6 @@ client.on('interactionCreate', async (interaction) => {
             }
 
             await targetChannel.permissionOverwrites.create(user.id, { ViewChannel: true });
-            db.addUserScore(user.id, session.session_type);
             
             // 3. Check the participant table (prevents double-scoring if they left and came back)
             const alreadyScored = db.hasJoined(targetChannel.id, user.id);
